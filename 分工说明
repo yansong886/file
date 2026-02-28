@@ -1,0 +1,28 @@
+前端代码（Frontend）
+HTML
+页面结构（、按钮、下拉框、容器等）
+例：<textarea>
+
+HTML
+<textarea id="input-words" ...></textarea>
+<button onclick="addWords()">添加单词</button>
+<div class="word-list" id="word-list"></div>
+CSS
+页面样式美化与响应式适配
+例：
+
+CSS
+.container { ... }
+.memorize-word { ... }
+@media (max-width: 500px) { ... }
+JavaScript
+所有的功能逻辑、数据的存储读取、页面交互
+例：
+
+JavaScript
+let words = JSON.parse(localStorage.getItem("simple_words") || "[]");
+function addWords() { ... }
+function randomPick(){ ... }
+function markMemorized(mem){ ... }
+function removeWord(word) { ... }
+// ...
