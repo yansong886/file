@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>简易单词背诵小程序</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      background: #f9f9f9;
+      font-family: 'Microsoft YaHei', Arial, sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .container {
+      width: 100%;
+      max-width: 420px;
+      margin: 30px auto;
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 3px 16px #0001;
+      padding: 24px 18px 30px 18px;
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 14px;
+      color: #389;
+    }
+    .section {
+      margin: 16px 0 24px 0;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 16px;
+    }
+    label, input, textarea {
+      font-size: 1em;
+    }
+    input, textarea, button, select {
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+      padding: 8px;
+      width: 100%;
+      margin-top: 5px;
+      margin-bottom: 12px;
+    }
+    input[type="button"], button {
+      width:auto;
+      background: #389;
+      color: #fff;
+      border: none;
+      font-size: 1em;
+      margin-right: 8px;
+      cursor: pointer;
+      padding: 8px 24px;
+      transition: background 0.18s;
+    }
+    input[type="button"]:hover, button:hover { background: #25778a; }
+    .small-btn { padding: 4px 12px; font-size: 0.9em; }
+
+    .word-list {
+      max-height: 180px;
+      overflow-y: auto;
+      margin-bottom: 8px;
+      background: #f6f6fa;
+      border-radius: 6px;
+      border: 1px solid #eee;
+      padding: 6px 8px;
+    }
+    .word-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 3px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .word-item:last-child {
+      border-bottom: none;
+    }
+    .memorized {
+      color: #38bb38;
+    }
+    .unmemorized {
+      color: #e57841;
+    }
+    .flex-row {
+      display: flex;
+      align-items: center;
+    }
+    .memorize-word {
+      font-size: 2em;
+      font-weight: 600;
+      color: #389;
+      text-align: center;
+      margin: 18px 0 10px 0;
+      letter-spacing: 2px;
+      word-break: break-all;
+    }
+    .memorize-result {
+      margin-left: 10px;
+      font-weight: bold;
+    }
+    @media (max-width: 500px) {
+      .container {padding: 12px;}
+      .memorize-word {font-size: 1.2em;}
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>简易背单词小程序</h2>
+
+    <div class="section" id="input-section">
+      <b>单词录入</b><br>
+      <textarea id="input-words" rows="2" placeholder="可批量录入，多个单词用半角逗号或空格分隔..."></textarea>
+      <button onclick="addWords()">添加单词</button>
+      <div class="word-list" id="word-list"></div>
+    </div>
+
+    <div class="section" id="recite-section">
+      <b>随机抽背~ </b>
+      <div class="memorize-word" id="random-word">请点击“随机抽取”</div>
+      <div>
+        <button class="small-btn" onclick="randomPick()">随机抽取</button>
+        <button class="small-btn" onclick="markMemorized(true)">记住了</button>
+        <button class="small-btn" onclick="markMemorized(false)">没记住</button>
+      </div>
+      <div class="memorize-result" id="memorize-status"></div>
+    </div>
+
+    <div class="section" id="record-section">
+      <b>背诵记录</b>
+      <select id="record-filter" onchange="renderWordList()">
+        <option value="all">全部</option>
+        <option value="memorized">已背</option>
+        <option value="unmemorized">未背</option>
+      </select>
+      <div class="word-list" id="record-list"></div>
+    </div>
+  </div>
+
+  <script>
+    // 数据结构： [{word: "abandon", memorized: true, count: 3}]
+    let words = JSON.parse(localStorage.getItem("simple_words") || "[]");
+    let currentWord = null;
+
+    // 新增单词
+    function addWords() {
+      const input = document.getElementById('input-words').value
+        .replace(/[，\n]+/g, ',')
+        .replace(/\s+/g, ',');
+      const wordArr = input.split(',')
+        .map(w=>w.trim().toLowerCase()).filter(w=>w && /^[a-zA-Z\-']+$/.test(w));
+      let added=0;
+      for(const word of wordArr){
+        if(!words.find(item=>item.word===word)){
+          words.push({word, memorized:false, count:0});
+          added++;
+        }
+      }
+      if(added) localStorage.setItem("simple_words", JSON.stringify(words));
+      document.getElementById('input-words').value='';
+      renderWordList();
+      renderRecordList();
+    }
+
+    // 展示单词列表
+    function renderWordList() {
+      let listEl = document.getElementById('word-list');
+      if (words.length == 0) {
+        listEl.innerHTML = "<span style='color:#e57'>（暂无单词~）</span>";
+        return;
+      }
+      let inner = '';
+      words.forEach(w=>{
+        inner += `<div class="word-item">
+                    <span>${w.word}</span>
+                    <button class="small-btn" onclick="removeWord('${w.word}')">删除</button>
+                  </div>`;
+      });
+      listEl.innerHTML = inner;
+    }
+
+    // 展示背诵记录
+    function renderRecordList() {
+      let filter = document.getElementById('record-filter').value;
+      let showWords = words;
+      if(filter === 'memorized') showWords = words.filter(w=>w.memorized);
+      else if(filter === 'unmemorized') showWords = words.filter(w=>!w.memorized);
+
+      let listEl = document.getElementById('record-list');
+      if(showWords.length==0){
+        listEl.innerHTML = "<span style='color:#aaa'>（无记录）</span>";
+        return;
+      }
+      listEl.innerHTML = showWords.map(w=>
+        `<div class="word-item">
+          <span>${w.word}</span>
+          <span class="${w.memorized?'memorized':'unmemorized'}">
+            ${w.memorized ? '已背' : '未背'} (${w.count})
+          </span>
+        </div>`
+      ).join('');
+    }
+
+    // 随机抽背
+    function randomPick(){
+      if(words.length===0) {
+        document.getElementById('random-word').innerText = "请先添加单词~";
+        currentWord = null;
+        return;
+      }
+
+      // 优先未背，然后全部
+      let pool = words.filter(w=>!w.memorized);
+      if(pool.length===0) pool = words;
+      let idx = Math.floor(Math.random()*pool.length);
+      currentWord = pool[idx].word;
+      document.getElementById('random-word').innerText = currentWord;
+      document.getElementById('memorize-status').innerText = '';
+    }
+
+    // 标记背诵
+    function markMemorized(mem){
+      if(!currentWord){ document.getElementById('memorize-status').innerText = "请先随机抽取～"; return; }
+      let w = words.find(w=>w.word===currentWord);
+      if(w) {
+        w.memorized = mem;
+        w.count = (w.count || 0) + 1;
+        localStorage.setItem("simple_words", JSON.stringify(words));
+      }
+      document.getElementById('memorize-status').innerText = mem?"已标记记住":"已标记没记住";
+      renderRecordList();
+    }
+
+    // 删除单词
+    function removeWord(word) {
+      words = words.filter(w=>w.word!==word);
+      localStorage.setItem("simple_words", JSON.stringify(words));
+      renderWordList();
+      renderRecordList();
+    }
+
+    // 记录过滤
+    document.getElementById('record-filter').addEventListener('change', renderRecordList);
+
+    // 渲染
+    renderWordList();
+    renderRecordList();
+
+  </script>
+</body>
+</html>
